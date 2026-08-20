@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "LeetSync Pro",
+  "version": "1.0.0",
+  "description": "Serverless LeetCode and GeeksforGeeks to GitHub synchronizer.",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": [
+    "https://leetcode.com/*",
+    "https://*.leetcode.com/*",
+    "https://www.geeksforgeeks.org/*",
+    "https://geeksforgeeks.org/*",
+    "https://api.github.com/*"
+  ],
+  "background": {
+    "service_worker": "src/background/service-worker.js"
+  },
+  "action": {
+    "default_title": "LeetSync Pro",
+    "default_popup": "src/popup/index.html"
+  },
+  "options_page": "src/options/index.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://leetcode.com/*",
+        "https://*.leetcode.com/*",
+        "https://www.geeksforgeeks.org/*",
+        "https://geeksforgeeks.org/*"
+      ],
+      "js": ["src/content/content.js"],
+      "run_at": "document_idle",
+      "world": "ISOLATED"
+    },
+    {
+      "matches": [
+        "https://leetcode.com/*",
+        "https://*.leetcode.com/*",
+        "https://www.geeksforgeeks.org/*",
+        "https://geeksforgeeks.org/*"
+      ],
+      "js": ["src/content/page-bridge.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ]
+}

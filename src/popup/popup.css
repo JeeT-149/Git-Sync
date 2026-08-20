@@ -1,0 +1,45 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  width: 390px;
+  background: #0b1020;
+  color: #eef2ff;
+}
+.app { padding: 18px; }
+.header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:16px; }
+.eyebrow { font-size:10px; letter-spacing:.18em; color:#8ea2ff; font-weight:800; }
+h1 { margin:4px 0 0; font-size:22px; }
+h2 { margin:0; font-size:14px; }
+.icon-btn,.primary,.secondary,.danger {
+  border:0; border-radius:10px; padding:10px 12px; cursor:pointer; font-weight:700;
+}
+.icon-btn { background:#1a2440; color:white; font-size:16px; }
+.primary { width:100%; background:#5b70ff; color:white; }
+.secondary { background:#1a2440; color:white; }
+.danger { background:#321722; color:#ffb6c7; }
+.card {
+  background:#10182d; border:1px solid #202b49; border-radius:16px; padding:14px; margin-bottom:12px;
+}
+.stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+.stat-card { background:#10182d; border:1px solid #202b49; border-radius:14px; padding:11px; }
+.stat-card span { display:block; color:#8896b3; font-size:11px; }
+.stat-card strong { display:block; margin-top:4px; font-size:20px; }
+.section-title { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.section-title span { color:#8ea2ff; font-weight:800; font-size:12px; }
+.progress { height:9px; border-radius:99px; background:#202b49; overflow:hidden; }
+.progress div { height:100%; width:0%; background:linear-gradient(90deg,#5b70ff,#7d8cff); transition:width .25s; }
+.mini { color:#8d9ab4; font-size:12px; margin-top:9px; }
+.recent { display:flex; flex-direction:column; gap:8px; max-height:210px; overflow:auto; }
+.row { display:flex; justify-content:space-between; gap:8px; padding:8px 0; border-bottom:1px solid #1a2440; }
+.row:last-child { border-bottom:0; }
+.row .name { font-weight:700; font-size:12px; }
+.row .meta { color:#8290ad; font-size:10px; margin-top:3px; }
+.badge { color:#7ee2aa; font-weight:800; font-size:10px; }
+footer { display:flex; justify-content:space-between; gap:8px; }
+footer button { flex:1; }
+.hidden { display:none; }
+p { color:#9aa7c0; line-height:1.5; font-size:12px; }

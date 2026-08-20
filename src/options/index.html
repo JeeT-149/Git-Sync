@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>LeetSync Pro Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <div class="eyebrow">LEETSYNC PRO</div>
+        <h1>Settings</h1>
+        <p>Everything stays in Chrome storage. GitHub requests go directly to api.github.com.</p>
+      </div>
+    </header>
+
+    <section class="card">
+      <h2>GitHub</h2>
+      <label>Personal Access Token
+        <input id="githubToken" type="password" placeholder="github_pat_... or classic PAT">
+      </label>
+      <div class="grid2">
+        <label>Repository Owner
+          <input id="githubOwner" placeholder="JeeT-149">
+        </label>
+        <label>Repository Name
+          <input id="githubRepo" placeholder="Leetcode">
+        </label>
+      </div>
+      <div class="grid2">
+        <label>Branch
+          <input id="githubBranch" value="main">
+        </label>
+        <label>Optional Root Folder
+          <input id="rootFolder" placeholder="DSA">
+        </label>
+      </div>
+      <div class="actions">
+        <button id="save" class="primary">Save settings</button>
+        <button id="test" class="secondary">Test GitHub</button>
+      </div>
+      <div id="githubStatus" class="status"></div>
+    </section>
+
+    <section class="card">
+      <h2>Sync</h2>
+      <label class="switch"><input id="autoSync" type="checkbox"><span>Automatic sync</span></label>
+      <label class="switch"><input id="acceptedOnly" type="checkbox"><span>Only sync accepted submissions</span></label>
+      <label class="switch"><input id="includeProblemStatement" type="checkbox"><span>Include problem statement in README</span></label>
+      <label class="switch"><input id="includeRuntime" type="checkbox"><span>Include runtime</span></label>
+      <label class="switch"><input id="includeMemory" type="checkbox"><span>Include memory</span></label>
+      <label class="switch"><input id="leetcodeEnabled" type="checkbox"><span>LeetCode enabled</span></label>
+      <label class="switch"><input id="gfgEnabled" type="checkbox"><span>GeeksforGeeks enabled</span></label>
+      <label>Commit message prefix
+        <input id="commitPrefix" value="LeetSync Pro">
+      </label>
+    </section>
+
+    <section class="card">
+      <h2>Required GitHub permission</h2>
+      <p>For a fine-grained token, restrict repository access to the target repository and grant <strong>Contents: Read and write</strong>.</p>
+      <p>Do not paste your token into chats, source files, or Git commits.</p>
+    </section>
+
+    <section class="card danger-card">
+      <h2>Reset</h2>
+      <button id="clear" class="danger">Clear local settings and history</button>
+    </section>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>LeetSync Pro</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div>
+        <div class="eyebrow">LEETSYNC PRO</div>
+        <h1>Track. Organize. Sync.</h1>
+      </div>
+      <button id="settingsBtn" class="icon-btn" title="Settings">⚙</button>
+    </header>
+
+    <section id="setupCard" class="card hidden">
+      <h2>Connect GitHub</h2>
+      <p>Add your repository details in Settings before the extension can sync.</p>
+      <button id="setupBtn" class="primary">Open Settings</button>
+    </section>
+
+    <section class="stats-grid">
+      <div class="stat-card"><span>Total</span><strong id="total">0</strong></div>
+      <div class="stat-card"><span>Streak</span><strong id="streak">0 🔥</strong></div>
+      <div class="stat-card"><span>Easy</span><strong id="easy">0</strong></div>
+      <div class="stat-card"><span>Medium</span><strong id="medium">0</strong></div>
+      <div class="stat-card"><span>Hard</span><strong id="hard">0</strong></div>
+      <div class="stat-card"><span>GFG</span><strong id="gfg">0</strong></div>
+    </section>
+
+    <section class="card">
+      <div class="section-title"><h2>Blind 75</h2><span id="blind75Label">0/75</span></div>
+      <div class="progress"><div id="blind75Bar"></div></div>
+      <div class="mini">Blind 150: <strong id="blind150Label">0/150</strong></div>
+    </section>
+
+    <section class="card">
+      <div class="section-title"><h2>Recent syncs</h2><span id="syncStatus">—</span></div>
+      <div id="recent" class="recent"></div>
+    </section>
+
+    <footer>
+      <button id="refreshBtn" class="secondary">Refresh</button>
+      <button id="clearBtn" class="danger">Clear local history</button>
+    </footer>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>
