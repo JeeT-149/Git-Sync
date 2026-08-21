@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "LeetSync Pro",
+  "name": "GitSync",
   "version": "1.0.0",
-  "description": "Serverless LeetCode and GeeksforGeeks to GitHub synchronizer.",
+  "description": "Automatically sync LeetCode and GeeksforGeeks solutions to GitHub.",
   "permissions": ["storage", "tabs"],
   "host_permissions": [
     "https://leetcode.com/*",
@@ -15,7 +15,7 @@
     "service_worker": "src/background/service-worker.js"
   },
   "action": {
-    "default_title": "LeetSync Pro",
+    "default_title": "GitSync",
     "default_popup": "src/popup/index.html"
   },
   "options_page": "src/options/index.html",

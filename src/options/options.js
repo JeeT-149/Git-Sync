@@ -4,7 +4,7 @@ const defaults = {
   githubRepo: "",
   githubBranch: "main",
   rootFolder: "",
-  commitPrefix: "LeetSync Pro",
+  commitPrefix: "GitSync",
   autoSync: true,
   acceptedOnly: true,
   includeProblemStatement: true,

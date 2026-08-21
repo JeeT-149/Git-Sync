@@ -1,5 +1,5 @@
 (() => {
-  const LOG = (...args) => console.debug("[LeetSync Pro]", ...args);
+  const LOG = (...args) => console.debug("[GitSync]", ...args);
   const platform = location.hostname.includes("geeksforgeeks") ? "gfg" : "leetcode";
 
   if (platform === "leetcode" && !location.pathname.includes("/problems/")) return;
@@ -247,7 +247,7 @@
       function onMessage(event) {
         if (event.source !== window) return;
         const d = event.data;
-        if (!d || d.source !== "leetsync-pro" || d.type !== "LEETSYNC_PRO_EDITOR_CODE") return;
+        if (!d || d.source !== "gitsync" || d.type !== "GITSYNC_EDITOR_CODE") return;
         if (d.requestId !== requestId) return;
         clearTimeout(timeout);
         window.removeEventListener("message", onMessage);
@@ -256,8 +256,8 @@
 
       window.addEventListener("message", onMessage);
       window.postMessage({
-        source: "leetsync-pro",
-        type: "LEETSYNC_PRO_GET_EDITOR_CODE",
+        source: "gitsync",
+        type: "GITSYNC_GET_EDITOR_CODE",
         requestId
       }, "*");
     });
@@ -354,7 +354,7 @@
   function injectUi() {
     const style = document.createElement("style");
     style.textContent = `
-      #leetsync-pro-toast {
+      #gitsync-toast {
         position: fixed;
         right: 20px;
         bottom: 20px;
@@ -371,18 +371,18 @@
         transition: .2s ease;
         pointer-events: none;
       }
-      #leetsync-pro-toast.show { opacity: 1; transform: translateY(0); }
-      #leetsync-pro-toast.error { background: #7f1d1d; }
+      #gitsync-toast.show { opacity: 1; transform: translateY(0); }
+      #gitsync-toast.error { background: #7f1d1d; }
     `;
     document.documentElement.appendChild(style);
     const toast = document.createElement("div");
-    toast.id = "leetsync-pro-toast";
+    toast.id = "gitsync-toast";
     document.documentElement.appendChild(toast);
   }
 
   let toastTimer;
   function showToast(message, error) {
-    const toast = document.getElementById("leetsync-pro-toast");
+    const toast = document.getElementById("gitsync-toast");
     if (!toast) return;
     toast.textContent = message;
     toast.classList.toggle("error", !!error);

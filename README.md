@@ -1,4 +1,4 @@
-# LeetSync Pro
+# GitSync
 
 A Manifest V3 Chrome extension that syncs accepted LeetCode and GeeksforGeeks solutions directly to GitHub without a backend.
 
@@ -43,4 +43,4 @@ The extension only talks to `api.github.com`.
 For debugging:
 - `chrome://extensions` -> extension -> Service worker -> Inspect
 - Open the page DevTools console on LeetCode/GFG
-- The extension logs with `[LeetSync Pro]`
+- The extension logs with `GitSync`

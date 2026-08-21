@@ -10,7 +10,7 @@ const DEFAULTS = {
     includeRuntime: true,
     includeMemory: true,
     rootFolder: "",
-    commitPrefix: "LeetSync Pro",
+    commitPrefix: "GitSync",
     leetcodeEnabled: true,
     gfgEnabled: true
   },
@@ -31,7 +31,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   handleMessage(message, sender)
     .then((result) => sendResponse(result))
     .catch((error) => {
-      console.error("[LeetSync Pro]", error);
+      console.error("[GitSync]", error);
       sendResponse({ ok: false, error: error?.message || String(error) });
     });
   return true;
@@ -77,7 +77,7 @@ function normalizeSettings(s = {}) {
     githubRepo: String(s.githubRepo || "").trim().replace(/\.git$/i, ""),
     githubBranch: String(s.githubBranch || "main").trim() || "main",
     rootFolder: sanitizePathPart(String(s.rootFolder || "").trim()),
-    commitPrefix: String(s.commitPrefix || "LeetSync Pro").trim()
+    commitPrefix: String(s.commitPrefix || "GitSync").trim()
   };
 }
 
@@ -346,7 +346,7 @@ function buildReadme(s, solutionPath) {
     "",
     "Add your final time and space complexity here if desired.",
     "",
-    `Synced by LeetSync Pro on ${new Date().toLocaleString()}`
+    `Synced by GitSync on ${new Date().toLocaleString()}`
   );
 
   return lines.join("\n") + "\n";
