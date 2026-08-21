@@ -15,11 +15,31 @@
       <button id="settingsBtn" class="icon-btn" title="Settings">⚙</button>
     </header>
 
-    <section id="setupCard" class="card hidden">
-      <h2>Connect GitHub</h2>
-      <p>Add your repository details in Settings before the extension can sync.</p>
-      <button id="setupBtn" class="primary">Open Settings</button>
-    </section>
+    <section id="githubCard" class="card">
+  <div class="section-title">
+    <h2>GitHub</h2>
+    <span id="githubStatus">Not connected</span>
+  </div>
+
+  <p id="githubAccount">
+    Connect GitHub to sync your solutions.
+  </p>
+
+  <button
+    id="connectGithub"
+    class="primary"
+  >
+    Connect GitHub
+  </button>
+
+  <button
+    id="disconnectGithub"
+    class="secondary"
+    style="display:none; margin-top:8px;"
+  >
+    Disconnect
+  </button>
+</section>
 
     <section class="stats-grid">
       <div class="stat-card"><span>Total</span><strong id="total">0</strong></div>

@@ -3,7 +3,7 @@
   "name": "GitSync",
   "version": "1.0.0",
   "description": "Automatically sync LeetCode and GeeksforGeeks solutions to GitHub.",
-  "permissions": ["storage", "tabs"],
+  "permissions": ["storage", "tabs","identity"],
   "host_permissions": [
     "https://leetcode.com/*",
     "https://*.leetcode.com/*",
@@ -12,7 +12,8 @@
     "https://api.github.com/*"
   ],
   "background": {
-    "service_worker": "src/background/service-worker.js"
+    "service_worker": "src/background/service-worker.js",
+    "type" : "module"
   },
   "action": {
     "default_title": "GitSync",

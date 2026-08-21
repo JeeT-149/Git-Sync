@@ -1,6 +1,64 @@
 async function send(type, payload = {}) {
   return chrome.runtime.sendMessage({ type, ...payload });
 }
+const connectButton =
+  document.getElementById("connectGithub");
+
+const disconnectButton =
+  document.getElementById("disconnectGithub");
+
+connectButton.addEventListener(
+  "click",
+  async () => {
+    connectButton.disabled = true;
+    connectButton.textContent =
+      "Connecting...";
+
+    try {
+      const response =
+        await chrome.runtime.sendMessage({
+          type: "CONNECT_GITHUB"
+        });
+
+      if (!response?.ok) {
+        throw new Error(
+          response?.error ||
+          "GitHub connection failed."
+        );
+      }
+
+      document.getElementById(
+        "githubStatus"
+      ).textContent = "Connected";
+
+      document.getElementById(
+        "githubAccount"
+      ).textContent =
+        `Connected as ${response.username}`;
+
+      connectButton.style.display = "none";
+      disconnectButton.style.display =
+        "block";
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      connectButton.disabled = false;
+      connectButton.textContent =
+        "Connect GitHub";
+    }
+  }
+);
+
+disconnectButton.addEventListener(
+  "click",
+  async () => {
+    await chrome.runtime.sendMessage({
+      type: "DISCONNECT_GITHUB"
+    });
+
+    location.reload();
+  }
+);
 
 document.getElementById("settingsBtn").onclick = () => chrome.runtime.openOptionsPage();
 document.getElementById("setupBtn").onclick = () => chrome.runtime.openOptionsPage();
