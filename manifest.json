@@ -9,7 +9,8 @@
     "https://*.leetcode.com/*",
     "https://www.geeksforgeeks.org/*",
     "https://geeksforgeeks.org/*",
-    "https://api.github.com/*"
+    "https://api.github.com/*",
+    "https://git-sync-auth-broker.vercel.app/*"
   ],
   "background": {
     "service_worker": "src/background/service-worker.js",
