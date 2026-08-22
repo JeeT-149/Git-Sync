@@ -1,67 +1,92 @@
 async function send(type, payload = {}) {
   return chrome.runtime.sendMessage({ type, ...payload });
 }
-const connectButton =
-  document.getElementById("connectGithub");
 
-const disconnectButton =
-  document.getElementById("disconnectGithub");
+const connectButton = document.getElementById("connectGithub");
+const disconnectButton = document.getElementById("disconnectGithub");
+const repoSelect = document.getElementById("repoSelect");
+const branchSelect = document.getElementById("branchSelect");
+const branchSelectionDiv = document.getElementById("branchSelection");
+const testAccessBtn = document.getElementById("testAccessBtn");
+const accessTestResult = document.getElementById("accessTestResult");
 
-connectButton.addEventListener(
-  "click",
-  async () => {
-    connectButton.disabled = true;
-    connectButton.textContent =
-      "Connecting...";
+connectButton.addEventListener("click", async () => {
+  connectButton.disabled = true;
+  connectButton.textContent = "Connecting...";
+  try {
+    const response = await send("CONNECT_GITHUB");
+    if (!response?.ok) throw new Error(response?.error || "GitHub connection failed.");
+    await initGitHubState();
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    connectButton.disabled = false;
+    connectButton.textContent = "Connect GitHub";
+  }
+});
 
-    try {
-      const response =
-        await chrome.runtime.sendMessage({
-          type: "CONNECT_GITHUB"
-        });
+disconnectButton.addEventListener("click", async () => {
+  await send("DISCONNECT_GITHUB");
+  document.getElementById("disconnectedState").style.display = "block";
+  document.getElementById("connectedState").style.display = "none";
+  document.getElementById("githubStatus").textContent = "Not connected";
+});
 
-      if (!response?.ok) {
-        throw new Error(
-          response?.error ||
-          "GitHub connection failed."
-        );
-      }
+repoSelect.addEventListener("change", async (e) => {
+  const value = e.target.value;
+  if (!value) {
+    branchSelectionDiv.style.display = "none";
+    return;
+  }
+  
+  const [owner, repo] = value.split("/");
+  repoSelect.disabled = true;
+  await send("SELECT_REPOSITORY", { owner, repo, branch: "" });
+  await loadBranches(owner, repo);
+  repoSelect.disabled = false;
+});
 
-      document.getElementById(
-        "githubStatus"
-      ).textContent = "Connected";
+branchSelect.addEventListener("change", async (e) => {
+  const branch = e.target.value;
+  if (!branch) return;
+  await send("SELECT_BRANCH", { branch });
+  accessTestResult.textContent = "";
+});
 
-      document.getElementById(
-        "githubAccount"
-      ).textContent =
-        `Connected as ${response.username}`;
-
-      connectButton.style.display = "none";
-      disconnectButton.style.display =
-        "block";
-    } catch (error) {
-      alert(error.message);
-    } finally {
-      connectButton.disabled = false;
-      connectButton.textContent =
-        "Connect GitHub";
+testAccessBtn.addEventListener("click", async () => {
+  const value = repoSelect.value;
+  const branch = branchSelect.value;
+  if (!value || !branch) {
+    setAccessStatus("Please select a repository and branch.", true);
+    return;
+  }
+  
+  const [owner, repo] = value.split("/");
+  testAccessBtn.disabled = true;
+  testAccessBtn.textContent = "Testing...";
+  setAccessStatus("Testing access...", false);
+  
+  try {
+    const response = await send("TEST_REPOSITORY_ACCESS", { owner, repo, branch });
+    if (response.ok) {
+      setAccessStatus(`✓ Access OK. (${response.access.private ? 'Private' : 'Public'} Repo)`, false);
+    } else {
+      setAccessStatus(`✕ ${response.error}`, true);
     }
+  } catch (err) {
+    setAccessStatus(`✕ ${err.message}`, true);
+  } finally {
+    testAccessBtn.disabled = false;
+    testAccessBtn.textContent = "Test Access";
   }
-);
+});
 
-disconnectButton.addEventListener(
-  "click",
-  async () => {
-    await chrome.runtime.sendMessage({
-      type: "DISCONNECT_GITHUB"
-    });
-
-    location.reload();
-  }
-);
+function setAccessStatus(msg, isError) {
+  accessTestResult.textContent = msg;
+  accessTestResult.style.color = isError ? "#ff8ea8" : "#7ee2aa";
+}
 
 document.getElementById("settingsBtn").onclick = () => chrome.runtime.openOptionsPage();
-document.getElementById("setupBtn").onclick = () => chrome.runtime.openOptionsPage();
 document.getElementById("refreshBtn").onclick = load;
 document.getElementById("clearBtn").onclick = async () => {
   if (confirm("Clear only local sync history? GitHub files will not be deleted.")) {
@@ -73,10 +98,8 @@ document.getElementById("clearBtn").onclick = async () => {
 load();
 
 async function load() {
-  const settings = (await send("GET_SETTINGS")).settings;
-  const configured = !!(settings.githubToken && settings.githubOwner && settings.githubRepo);
-  document.getElementById("setupCard").classList.toggle("hidden", configured);
-
+  await initGitHubState();
+  
   const dashboard = await send("GET_DASHBOARD");
   if (!dashboard.ok) return;
 
@@ -113,6 +136,90 @@ async function load() {
     `;
     recent.appendChild(row);
   }
+}
+
+async function initGitHubState() {
+  const userRes = await send("GET_GITHUB_USER");
+  if (userRes.ok && userRes.connected) {
+    document.getElementById("disconnectedState").style.display = "none";
+    document.getElementById("connectedState").style.display = "block";
+    document.getElementById("githubStatus").textContent = "Connected";
+    
+    document.getElementById("githubAccount").textContent = userRes.username;
+    const avatar = document.getElementById("githubAvatar");
+    if (userRes.avatarUrl) {
+      avatar.src = userRes.avatarUrl;
+      avatar.style.display = "block";
+    }
+
+    const { settings } = await send("GET_SETTINGS");
+    await loadRepositories(settings);
+  } else {
+    document.getElementById("disconnectedState").style.display = "block";
+    document.getElementById("connectedState").style.display = "none";
+    document.getElementById("githubStatus").textContent = "Not connected";
+  }
+}
+
+async function loadRepositories(settings) {
+  repoSelect.innerHTML = '<option value="">Loading repositories...</option>';
+  repoSelect.disabled = true;
+  
+  const response = await send("GET_GITHUB_REPOSITORIES");
+  repoSelect.innerHTML = '<option value="">Select a repository...</option>';
+  
+  if (response.ok && response.repositories) {
+    const repos = response.repositories;
+    for (const repo of repos) {
+      const option = document.createElement("option");
+      option.value = repo.full_name;
+      option.textContent = repo.full_name + (repo.private ? ' 🔒' : '');
+      repoSelect.appendChild(option);
+    }
+    
+    const selectedRepo = settings.githubOwner && settings.githubRepo 
+      ? `${settings.githubOwner}/${settings.githubRepo}` 
+      : "";
+      
+    if (selectedRepo && Array.from(repoSelect.options).some(o => o.value === selectedRepo)) {
+      repoSelect.value = selectedRepo;
+      await loadBranches(settings.githubOwner, settings.githubRepo, settings.githubBranch);
+    }
+  } else {
+    repoSelect.innerHTML = '<option value="">Failed to load repositories</option>';
+  }
+  
+  repoSelect.disabled = false;
+}
+
+async function loadBranches(owner, repo, selectedBranch = "") {
+  branchSelectionDiv.style.display = "block";
+  branchSelect.innerHTML = '<option value="">Loading branches...</option>';
+  branchSelect.disabled = true;
+  
+  const response = await send("GET_GITHUB_BRANCHES", { owner, repo });
+  branchSelect.innerHTML = '<option value="">Select a branch...</option>';
+  
+  if (response.ok && response.branches) {
+    for (const b of response.branches) {
+      const option = document.createElement("option");
+      option.value = b.name;
+      option.textContent = b.name;
+      branchSelect.appendChild(option);
+    }
+    
+    if (selectedBranch && Array.from(branchSelect.options).some(o => o.value === selectedBranch)) {
+      branchSelect.value = selectedBranch;
+    } else if (response.branches.length > 0) {
+      // Default to the first branch if not specified
+      branchSelect.value = response.branches[0].name;
+      await send("SELECT_BRANCH", { branch: response.branches[0].name });
+    }
+  } else {
+    branchSelect.innerHTML = '<option value="">Failed to load branches</option>';
+  }
+  
+  branchSelect.disabled = false;
 }
 
 function setText(id, value) {

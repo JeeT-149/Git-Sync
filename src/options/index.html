@@ -16,31 +16,8 @@
     </header>
 
     <section class="card">
-      <h2>GitHub</h2>
-      <label>Personal Access Token
-        <input id="githubToken" type="password" placeholder="github_pat_... or classic PAT">
-      </label>
-      <div class="grid2">
-        <label>Repository Owner
-          <input id="githubOwner" placeholder="JeeT-149">
-        </label>
-        <label>Repository Name
-          <input id="githubRepo" placeholder="Leetcode">
-        </label>
-      </div>
-      <div class="grid2">
-        <label>Branch
-          <input id="githubBranch" value="main">
-        </label>
-        <label>Optional Root Folder
-          <input id="rootFolder" placeholder="DSA">
-        </label>
-      </div>
-      <div class="actions">
-        <button id="save" class="primary">Save settings</button>
-        <button id="test" class="secondary">Test GitHub</button>
-      </div>
-      <div id="githubStatus" class="status"></div>
+      <h2>GitHub Connection</h2>
+      <p>GitHub authentication and repository selection have been moved to the main GitSync popup.</p>
     </section>
 
     <section class="card">
@@ -55,13 +32,16 @@
       <label>Commit message prefix
         <input id="commitPrefix" value="GitSync">
       </label>
+      <label>Optional Root Folder
+        <input id="rootFolder" placeholder="DSA">
+      </label>
+      <div class="actions" style="margin-top: 16px;">
+        <button id="save" class="primary">Save settings</button>
+      </div>
+      <div id="githubStatus" class="status"></div>
     </section>
 
-    <section class="card">
-      <h2>Required GitHub permission</h2>
-      <p>For a fine-grained token, restrict repository access to the target repository and grant <strong>Contents: Read and write</strong>.</p>
-      <p>Do not paste your token into chats, source files, or Git commits.</p>
-    </section>
+
 
     <section class="card danger-card">
       <h2>Reset</h2>

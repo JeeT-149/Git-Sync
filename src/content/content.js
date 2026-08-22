@@ -10,83 +10,94 @@
     observer: null,
     pollTimer: null
   };
+  
+  let currentPath = location.pathname;
 
   injectUi();
-  startObservers();
+  attachSubmitListener();
 
-  function startObservers() {
-    state.observer = new MutationObserver(() => scheduleCheck());
-    state.observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+  let isSyncInProgress = false;
 
-    state.pollTimer = setInterval(scheduleCheck, 1800);
-    setTimeout(scheduleCheck, 1500);
+  function attachSubmitListener() {
+    window.addEventListener("message", async (e) => {
+      if (platform !== "leetcode") return;
+      if (e.source !== window || e.data?.source !== "gitsync" || e.data?.type !== "GITSYNC_SUBMIT_DETECTED") return;
+
+      LOG("Submit detected via network interception");
+
+      if (isSyncInProgress) {
+        LOG("Sync already in progress for this submit click. Ignoring.");
+        return;
+      }
+
+      isSyncInProgress = true;
+      try {
+        await handleSubmissionEvent();
+      } finally {
+        setTimeout(() => {
+          isSyncInProgress = false;
+        }, 3000);
+      }
+    });
   }
 
-  let checkQueued = false;
-  function scheduleCheck() {
-    if (checkQueued) return;
-    checkQueued = true;
-    setTimeout(async () => {
-      checkQueued = false;
-      await detectAccepted();
-    }, 200);
-  }
-
-  async function detectAccepted() {
-    const text = document.body?.innerText || "";
-    const result = detectResult(text);
-    if (!result) return;
-    if (result === state.lastResult && result !== "ACCEPTED") return;
-    state.lastResult = result;
-
-    if (result !== "ACCEPTED") return;
-
+  async function handleSubmissionEvent() {
     const data = await collectSubmission();
     if (!data?.code) {
-      showToast("Accepted detected, but code extraction failed. Open extension settings for diagnostics.", true);
+      showToast("Submit detected, but code extraction failed. Open extension settings for diagnostics.", true);
       return;
     }
 
     const fingerprint = `${data.platform}:${data.problemSlug}:${data.codeHash}`;
-    if (fingerprint === state.lastFingerprint) return;
+    if (fingerprint === state.lastFingerprint) {
+      LOG("Duplicate submit detected. Skipping.");
+      return;
+    }
     state.lastFingerprint = fingerprint;
 
-    LOG("Accepted submission detected:", data);
+    LOG("Code captured");
+    
+    if (data.platform === "leetcode") {
+      LOG("Generating Markdown and downloading images");
+      try {
+        const { settings } = await chrome.storage.local.get("settings");
+        const s = settings || {};
+        const root = s.rootFolder ? `${s.rootFolder}/` : "";
+        const diff = sanitizePathPart(data.difficulty || "Unknown");
+        const title = sanitizePathPart(data.problemTitle || data.problemSlug || "Problem");
+        const problemFolderPath = [root, "LeetCode", diff, title].filter(Boolean).join("/");
+        const solutionFileName = `solution${extensionFor(data.language)}`;
+
+        const { prepareSubmissionDocs } = await import(chrome.runtime.getURL("src/sync/prepare-submission.js"));
+        
+        data.titleSlug = data.problemSlug;
+        data.problemFolderPath = problemFolderPath;
+        data.solutionFileName = solutionFileName;
+        
+        const { readmeContent, imageFiles } = await prepareSubmissionDocs(data);
+        
+        data.readmeContent = readmeContent;
+        data.imageFiles = imageFiles;
+      } catch (err) {
+        LOG("Failed to generate markdown:", err.message);
+      }
+    }
+
+    LOG("Starting GitHub sync");
+
     const response = await chrome.runtime.sendMessage({ type: "SYNC_SUBMISSION", submission: data });
 
     if (response?.ok && !response.skipped) {
+      LOG("File create/update result:", response.createdOrUpdated);
+      LOG("Repository:", response.path);
+      LOG("Solution path:", response.path);
       showToast(`✓ Synced: ${data.problemTitle}`, false);
     } else if (response?.ok && response.skipped) {
       if (!response.duplicate) showToast(response.message || "Skipped", false);
     } else {
+      LOG("Sync failed:", response?.error);
       showToast(`✕ Sync failed: ${response?.error || "Unknown error"}`, true);
     }
-  }
-
-  function detectResult(bodyText) {
-    const normalized = bodyText.toLowerCase();
-
-    const negative = [
-      "wrong answer",
-      "runtime error",
-      "time limit exceeded",
-      "memory limit exceeded",
-      "compile error",
-      "compilation error",
-      "output limit exceeded",
-      "presentation error"
-    ];
-
-    if (negative.some(x => normalized.includes(x))) {
-      const acceptedCount = (normalized.match(/\baccepted\b/g) || []).length;
-      if (!acceptedCount) return "FAILED";
-    }
-
-    if (/\baccepted\b/i.test(bodyText) || /accepted!/i.test(bodyText)) return "ACCEPTED";
-    if (/\bwrong answer\b/i.test(bodyText)) return "WRONG_ANSWER";
-    if (/\bruntime error\b/i.test(bodyText)) return "RUNTIME_ERROR";
-    if (/time limit exceeded/i.test(bodyText)) return "TLE";
-    return "";
   }
 
   async function collectSubmission() {
@@ -378,6 +389,20 @@
     const toast = document.createElement("div");
     toast.id = "gitsync-toast";
     document.documentElement.appendChild(toast);
+  }
+
+  function sanitizePathPart(s) {
+    return String(s).replace(/[<>:"/\\|?*\x00-\x1F]/g, "").replace(/\s+/g, " ").trim().replace(/\.+$/g, "").slice(0, 120);
+  }
+
+  function extensionFor(language = "") {
+    const l = language.toLowerCase().replace(/[^a-z+#]/g, "");
+    const map = {
+      java: ".java", python: ".py", python3: ".py", c: ".c", cpp: ".cpp", "c++": ".cpp",
+      csharp: ".cs", "c#": ".cs", javascript: ".js", typescript: ".ts", go: ".go",
+      kotlin: ".kt", rust: ".rs", swift: ".swift", php: ".php", ruby: ".rb", sql: ".sql", scala: ".scala"
+    };
+    return map[l] || ".txt";
   }
 
   let toastTimer;

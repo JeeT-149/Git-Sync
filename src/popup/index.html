@@ -16,30 +16,44 @@
     </header>
 
     <section id="githubCard" class="card">
-  <div class="section-title">
-    <h2>GitHub</h2>
-    <span id="githubStatus">Not connected</span>
-  </div>
+      <div class="section-title">
+        <h2>GitHub</h2>
+        <span id="githubStatus">Not connected</span>
+      </div>
 
-  <p id="githubAccount">
-    Connect GitHub to sync your solutions.
-  </p>
+      <div id="disconnectedState">
+        <p>Connect GitHub to sync your solutions.</p>
+        <button id="connectGithub" class="primary">Connect GitHub</button>
+      </div>
 
-  <button
-    id="connectGithub"
-    class="primary"
-  >
-    Connect GitHub
-  </button>
+      <div id="connectedState" style="display:none;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+          <img id="githubAvatar" src="" alt="" style="width: 24px; height: 24px; border-radius: 50%; display: none;">
+          <p id="githubAccount" class="account-name" style="margin: 0; font-weight: 500;"></p>
+        </div>
+        
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label for="repoSelect" style="display: block; margin-bottom: 4px; font-size: 12px; color: #a1a1aa;">Repository</label>
+          <select id="repoSelect" style="width: 100%; padding: 8px; border-radius: 6px; background: #27272a; border: 1px solid #3f3f46; color: white;">
+            <option value="">Loading...</option>
+          </select>
+        </div>
 
-  <button
-    id="disconnectGithub"
-    class="secondary"
-    style="display:none; margin-top:8px;"
-  >
-    Disconnect
-  </button>
-</section>
+        <div class="form-group" id="branchSelection" style="display:none; margin-bottom: 8px;">
+          <label for="branchSelect" style="display: block; margin-bottom: 4px; font-size: 12px; color: #a1a1aa;">Branch</label>
+          <select id="branchSelect" style="width: 100%; padding: 8px; border-radius: 6px; background: #27272a; border: 1px solid #3f3f46; color: white;">
+            <option value="">Loading...</option>
+          </select>
+        </div>
+
+        <div id="accessTestResult" class="status" style="margin-top: 8px; margin-bottom: 8px; font-size: 12px;"></div>
+        
+        <div class="actions" style="margin-top: 12px; gap: 8px; display: flex;">
+          <button id="testAccessBtn" class="primary" style="flex:1;">Test Access</button>
+          <button id="disconnectGithub" class="secondary" style="flex:1;">Disconnect</button>
+        </div>
+      </div>
+    </section>
 
     <section class="stats-grid">
       <div class="stat-card"><span>Total</span><strong id="total">0</strong></div>

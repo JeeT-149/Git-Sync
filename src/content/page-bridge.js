@@ -32,4 +32,13 @@
       result
     }, "*");
   });
+
+  const origFetch = window.fetch;
+  window.fetch = async function(...args) {
+    const url = typeof args[0] === "string" ? args[0] : (args[0]?.url || "");
+    if (url.includes("/submit/") && window.location.hostname.includes("leetcode.com")) {
+      window.postMessage({ source: "gitsync", type: "GITSYNC_SUBMIT_DETECTED" }, "*");
+    }
+    return origFetch.apply(this, args);
+  };
 })();

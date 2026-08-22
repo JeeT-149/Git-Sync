@@ -3,10 +3,16 @@
   "name": "GitSync",
   "version": "1.0.0",
   "description": "Automatically sync LeetCode and GeeksforGeeks solutions to GitHub.",
-  "permissions": ["storage", "tabs","identity"],
+  "permissions": [
+    "storage",
+    "tabs",
+    "identity",
+    "alarms"
+  ],
   "host_permissions": [
     "https://leetcode.com/*",
     "https://*.leetcode.com/*",
+    "https://assets.leetcode.com/*",
     "https://www.geeksforgeeks.org/*",
     "https://geeksforgeeks.org/*",
     "https://api.github.com/*",
@@ -14,7 +20,7 @@
   ],
   "background": {
     "service_worker": "src/background/service-worker.js",
-    "type" : "module"
+    "type": "module"
   },
   "action": {
     "default_title": "GitSync",
@@ -29,7 +35,9 @@
         "https://www.geeksforgeeks.org/*",
         "https://geeksforgeeks.org/*"
       ],
-      "js": ["src/content/content.js"],
+      "js": [
+        "src/content/content.js"
+      ],
       "run_at": "document_idle",
       "world": "ISOLATED"
     },
@@ -40,9 +48,21 @@
         "https://www.geeksforgeeks.org/*",
         "https://geeksforgeeks.org/*"
       ],
-      "js": ["src/content/page-bridge.js"],
+      "js": [
+        "src/content/page-bridge.js"
+      ],
       "run_at": "document_start",
       "world": "MAIN"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }

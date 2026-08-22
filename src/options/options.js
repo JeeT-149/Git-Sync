@@ -1,8 +1,4 @@
 const defaults = {
-  githubToken: "",
-  githubOwner: "",
-  githubRepo: "",
-  githubBranch: "main",
   rootFolder: "",
   commitPrefix: "GitSync",
   autoSync: true,
@@ -18,7 +14,6 @@ const ids = Object.keys(defaults);
 load();
 
 document.getElementById("save").onclick = save;
-document.getElementById("test").onclick = test;
 document.getElementById("clear").onclick = async () => {
   if (!confirm("Clear local settings and history? This does not delete GitHub files.")) return;
   await send("CLEAR_HISTORY");
@@ -46,17 +41,7 @@ async function save() {
   else setStatus("githubStatus", res.error || "Save failed.", true);
 }
 
-async function test() {
-  await save();
-  setStatus("githubStatus", "Checking GitHub...", false);
-  const s = read();
-  const res = await send("TEST_GITHUB", { settings: s });
-  if (res.ok) {
-    setStatus("githubStatus", `✓ ${res.message} Repository: ${res.repository}. Branch: ${res.defaultBranch}`, false);
-  } else {
-    setStatus("githubStatus", `✕ ${res.error}`, true);
-  }
-}
+
 
 function read() {
   const s = {};

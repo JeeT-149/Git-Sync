@@ -3,37 +3,71 @@ import {
   GITHUB_AUTH_BROKER
 } from "./github-config.js";
 
-const AUTH_BASE = "https://github.com/login/oauth/authorize";
+const AUTH_BASE =
+  "https://github.com/login/oauth/authorize";
 
-function randomString(byteLength = 32) {
-  const bytes = new Uint8Array(byteLength);
-  crypto.getRandomValues(bytes);
+function randomString(
+  byteLength = 32
+) {
+  const bytes =
+    new Uint8Array(
+      byteLength
+    );
 
-  return Array.from(bytes)
-    .map((byte) => byte.toString(16).padStart(2, "0"))
+  crypto.getRandomValues(
+    bytes
+  );
+
+  return Array.from(
+    bytes
+  )
+    .map((byte) =>
+      byte
+        .toString(16)
+        .padStart(2, "0")
+    )
     .join("");
 }
 
-function base64UrlEncode(bytes) {
+function base64UrlEncode(
+  bytes
+) {
   let binary = "";
 
   for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
+    binary += String.fromCharCode(
+      byte
+    );
   }
 
   return btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
+    .replace(
+      /\+/g,
+      "-"
+    )
+    .replace(
+      /\//g,
+      "_"
+    )
+    .replace(
+      /=+$/g,
+      ""
+    );
 }
 
-async function createCodeChallenge(codeVerifier) {
-  const data = new TextEncoder().encode(codeVerifier);
+async function createCodeChallenge(
+  codeVerifier
+) {
+  const data =
+    new TextEncoder().encode(
+      codeVerifier
+    );
 
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    data
-  );
+  const digest =
+    await crypto.subtle.digest(
+      "SHA-256",
+      data
+    );
 
   return base64UrlEncode(
     new Uint8Array(digest)
@@ -54,26 +88,45 @@ export async function startGitHubLogin() {
   }
 
   const redirectUri =
-    chrome.identity.getRedirectURL("github");
+    chrome.identity.getRedirectURL(
+      "github"
+    );
 
-  const state = randomString(32);
-  const codeVerifier = randomString(64);
+  const state =
+    randomString(32);
+
+  const codeVerifier =
+    randomString(64);
 
   const codeChallenge =
-    await createCodeChallenge(codeVerifier);
+    await createCodeChallenge(
+      codeVerifier
+    );
 
   await chrome.storage.session.set({
-    githubOAuthState: state,
-    githubCodeVerifier: codeVerifier
+    githubOAuthState:
+      state,
+
+    githubCodeVerifier:
+      codeVerifier
   });
 
-  const params = new URLSearchParams({
-    client_id: GITHUB_CLIENT_ID,
-    redirect_uri: redirectUri,
-    state,
-    code_challenge: codeChallenge,
-    code_challenge_method: "S256"
-  });
+  const params =
+    new URLSearchParams({
+      client_id:
+        GITHUB_CLIENT_ID,
+
+      redirect_uri:
+        redirectUri,
+
+      state,
+
+      code_challenge:
+        codeChallenge,
+
+      code_challenge_method:
+        "S256"
+    });
 
   const authorizationUrl =
     `${AUTH_BASE}?${params.toString()}`;
@@ -82,10 +135,15 @@ export async function startGitHubLogin() {
 
   try {
     responseUrl =
-      await chrome.identity.launchWebAuthFlow({
-        url: authorizationUrl,
-        interactive: true
-      });
+      await chrome.identity.launchWebAuthFlow(
+        {
+          url:
+            authorizationUrl,
+
+          interactive:
+            true
+        }
+      );
   } catch (error) {
     await chrome.storage.session.remove([
       "githubOAuthState",
@@ -119,16 +177,23 @@ async function handleCallback(
   responseUrl,
   redirectUri
 ) {
-  const url = new URL(responseUrl);
+  const url =
+    new URL(responseUrl);
 
   const returnedState =
-    url.searchParams.get("state");
+    url.searchParams.get(
+      "state"
+    );
 
   const code =
-    url.searchParams.get("code");
+    url.searchParams.get(
+      "code"
+    );
 
   const error =
-    url.searchParams.get("error");
+    url.searchParams.get(
+      "error"
+    );
 
   const errorDescription =
     url.searchParams.get(
@@ -157,7 +222,8 @@ async function handleCallback(
 
     if (
       !stored.githubOAuthState ||
-      returnedState !== stored.githubOAuthState
+      returnedState !==
+        stored.githubOAuthState
     ) {
       throw new Error(
         "OAuth state verification failed."
@@ -174,17 +240,24 @@ async function handleCallback(
       await fetch(
         GITHUB_AUTH_BROKER,
         {
-          method: "POST",
+          method:
+            "POST",
+
           headers: {
             "Content-Type":
               "application/json"
           },
-          body: JSON.stringify({
-            code,
-            code_verifier:
-              stored.githubCodeVerifier,
-            redirect_uri: redirectUri
-          })
+
+          body:
+            JSON.stringify({
+              code,
+
+              code_verifier:
+                stored.githubCodeVerifier,
+
+              redirect_uri:
+                redirectUri
+            })
         }
       );
 
@@ -195,7 +268,7 @@ async function handleCallback(
         await tokenResponse.json();
     } catch {
       throw new Error(
-        "Authentication broker returned an invalid response."
+        "Authentication broker returned invalid JSON."
       );
     }
 
@@ -214,14 +287,18 @@ async function handleCallback(
         tokenData.access_token,
 
       expiresIn:
-        tokenData.expires_in || null,
+        Number(
+          tokenData.expires_in
+        ) || null,
 
       refreshToken:
-        tokenData.refresh_token || null,
+        tokenData.refresh_token ||
+        null,
 
       refreshTokenExpiresIn:
-        tokenData.refresh_token_expires_in ||
-        null
+        Number(
+          tokenData.refresh_token_expires_in
+        ) || null
     };
   } finally {
     await chrome.storage.session.remove([

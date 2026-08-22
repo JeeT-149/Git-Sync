@@ -1,10 +1,20 @@
 import {
   startGitHubLogin
 } from "../auth/github-auth.js";
+import {
+  githubFetch,
+  getRepositories,
+  getBranches,
+  testAccess
+} from "../github/github-api.js";
+import {
+  clearAuthentication,
+  hasValidAuthentication
+} from "../auth/token-manager.js";
+import { syncSubmission as engineSyncSubmission } from "../sync/sync-engine.js";
 
 const DEFAULTS = {
   settings: {
-    githubToken: "",
     githubOwner: "",
     githubRepo: "",
     githubBranch: "main",
@@ -21,6 +31,23 @@ const DEFAULTS = {
   records: [],
   lastSync: null
 };
+
+// in service-worker.js
+if (chrome.alarms) {
+  chrome.alarms.create("gitsync-auth-heartbeat", { periodInMinutes: 120 });
+} else {
+  console.warn("[GitSync] chrome.alarms unavailable — check manifest permissions.");
+}
+
+chrome.alarms?.onAlarm.addListener(async (alarm) => {
+  if (alarm.name !== "gitsync-auth-heartbeat") return;
+
+  try {
+    await getValidAccessToken();
+  } catch (err) {
+    console.warn("[GitSync] Heartbeat auth check failed:", err.message);
+  }
+});
 
 chrome.runtime.onInstalled.addListener(async () => {
   try {
@@ -99,11 +126,37 @@ async function handleMessage(
         ok: true
       };
 
-    case "TEST_GITHUB":
-      return testGithub(
-        message.settings ||
-        await getSettings()
-      );
+    case "GET_GITHUB_USER":
+      return getGithubUser();
+
+    case "GET_GITHUB_REPOSITORIES":
+      return { ok: true, repositories: await getRepositories() };
+
+    case "GET_GITHUB_BRANCHES":
+      return { ok: true, branches: await getBranches(message.owner, message.repo) };
+
+    case "SELECT_REPOSITORY":
+      await chrome.storage.local.set({
+        settings: {
+          ...await getSettings(),
+          githubOwner: message.owner,
+          githubRepo: message.repo,
+          githubBranch: message.branch || ""
+        }
+      });
+      return { ok: true };
+
+    case "SELECT_BRANCH":
+      await chrome.storage.local.set({
+        settings: {
+          ...await getSettings(),
+          githubBranch: message.branch
+        }
+      });
+      return { ok: true };
+
+    case "TEST_REPOSITORY_ACCESS":
+      return { ok: true, access: await testAccess(message.owner, message.repo, message.branch) };
 
     case "CONNECT_GITHUB":
       return connectGitHub();
@@ -137,10 +190,37 @@ async function handleMessage(
   }
 }
 
+async function getGithubUser() {
+  try {
+    const valid = await hasValidAuthentication();
+    if (!valid) return { ok: true, connected: false };
+
+    const local = await chrome.storage.local.get(["githubUsername", "githubAvatarUrl"]);
+    if (local.githubUsername) {
+      return { ok: true, connected: true, username: local.githubUsername, avatarUrl: local.githubAvatarUrl };
+    }
+
+    const userResponse = await githubFetch("/user");
+    if (!userResponse.ok) return { ok: true, connected: false };
+    const user = await userResponse.json();
+    
+    await chrome.storage.local.set({
+      githubUsername: user.login,
+      githubAvatarUrl: user.avatar_url
+    });
+
+    return { ok: true, connected: true, username: user.login, avatarUrl: user.avatar_url };
+  } catch (error) {
+    return { ok: true, connected: false };
+  }
+}
+
 async function connectGitHub() {
   try {
     const auth =
       await startGitHubLogin();
+
+    const now = Date.now();
 
     await chrome.storage.session.set({
       githubAccessToken:
@@ -148,50 +228,76 @@ async function connectGitHub() {
 
       githubTokenExpiresAt:
         auth.expiresIn
-          ? Date.now() +
+          ? now +
             auth.expiresIn * 1000
-          : null,
-
-      githubRefreshToken:
-        auth.refreshToken || null,
-
-      githubRefreshTokenExpiresAt:
-        auth.refreshTokenExpiresIn
-          ? Date.now() +
-            auth.refreshTokenExpiresIn *
-              1000
           : null
     });
 
+    if (auth.refreshToken) {
+      await chrome.storage.local.set({
+        githubRefreshToken:
+          auth.refreshToken,
+
+        githubRefreshTokenExpiresAt:
+          auth.refreshTokenExpiresIn
+            ? now +
+              auth.refreshTokenExpiresIn *
+                1000
+            : null,
+
+        githubConnectedAt:
+          new Date().toISOString()
+      });
+    }
+
     const userResponse =
-      await githubApi(
-        "/user",
-        auth.accessToken
+      await fetch(
+        "https://api.github.com/user",
+        {
+          headers: {
+            Accept:
+              "application/vnd.github+json",
+
+            Authorization:
+              `Bearer ${auth.accessToken}`,
+
+            "X-GitHub-Api-Version":
+              "2026-03-10"
+          }
+        }
       );
 
     if (!userResponse.ok) {
-      await clearGitHubSession();
+      await clearAuthentication();
 
       throw new Error(
-        "GitHub authentication succeeded, but user verification failed."
+        `GitHub user verification failed. HTTP ${userResponse.status}`
       );
     }
 
     const user =
       await userResponse.json();
 
+    await chrome.storage.local.set({
+      githubUsername:
+        user.login,
+
+      githubAvatarUrl:
+        user.avatar_url
+    });
+
     return {
       ok: true,
-      username: user.login,
-      avatarUrl: user.avatar_url
+      username:
+        user.login,
+      avatarUrl:
+        user.avatar_url
     };
   } catch (error) {
     console.error(
       "[GitSync] GitHub connection failed:",
       error
     );
-
-    await clearGitHubSession();
 
     return {
       ok: false,
@@ -203,47 +309,13 @@ async function connectGitHub() {
 }
 
 async function disconnectGitHub() {
-  await clearGitHubSession();
+  await clearAuthentication();
 
   return {
     ok: true
   };
 }
 
-async function clearGitHubSession() {
-  await chrome.storage.session.remove([
-    "githubAccessToken",
-    "githubTokenExpiresAt",
-    "githubRefreshToken",
-    "githubRefreshTokenExpiresAt"
-  ]);
-}
-
-async function githubApi(
-  path,
-  token,
-  options = {}
-) {
-  return fetch(
-    `https://api.github.com${path}`,
-    {
-      ...options,
-
-      headers: {
-        Accept:
-          "application/vnd.github+json",
-
-        Authorization:
-          `Bearer ${token}`,
-
-        "X-GitHub-Api-Version":
-          "2026-03-10",
-
-        ...(options.headers || {})
-      }
-    }
-  );
-}
 
 async function getSettings() {
   const data =
@@ -296,53 +368,7 @@ function normalizeSettings(
   };
 }
 
-async function testGithub(
-  settings
-) {
-  const s =
-    normalizeSettings(settings);
 
-  validateGithubSettings(s);
-
-  const res =
-    await githubFetch(
-      `https://api.github.com/repos/${encodeURIComponent(
-        s.githubOwner
-      )}/${encodeURIComponent(
-        s.githubRepo
-      )}`,
-      s.githubToken
-    );
-
-  if (!res.ok) {
-    throw new Error(
-      await githubError(
-        res,
-        "GitHub repository check failed."
-      )
-    );
-  }
-
-  const repo =
-    await res.json();
-
-  return {
-    ok: true,
-
-    repository:
-      repo.full_name,
-
-    defaultBranch:
-      repo.default_branch ||
-      s.githubBranch,
-
-    private:
-      !!repo.private,
-
-    message:
-      "GitHub connection is working."
-  };
-}
 
 async function syncSubmission(
   submission
@@ -463,27 +489,45 @@ async function syncSubmission(
       "/README.md"
     );
 
-  const solutionResult =
-    await upsertGithubFile(
-      settings,
-      solutionPath,
-      submission.code,
-      `${settings.commitPrefix}: ${submission.platform} - ${submission.problemTitle}`
-    );
-
   const readme =
-    buildReadme(
+    submission.readmeContent || buildReadme(
       submission,
       solutionPath
     );
 
-  const readmeResult =
-    await upsertGithubFile(
-      settings,
-      readmePath,
-      readme,
-      `${settings.commitPrefix}: update README - ${submission.problemTitle}`
-    );
+  const engineResult = await engineSyncSubmission({
+    owner: settings.githubOwner,
+    repo: settings.githubRepo,
+    branch: settings.githubBranch,
+    problemSlug: submission.problemSlug,
+    language: submission.language,
+    code: submission.code,
+    submissionId: submission.submissionId,
+    solutionPath,
+    solutionContent: submission.code,
+    readmePath,
+    readmeContent: readme,
+    imageFiles: submission.imageFiles || [],
+    commitMessage: `${settings.commitPrefix}: ${submission.platform} - ${submission.problemTitle}`
+  });
+
+  if (engineResult.status === "SKIPPED_DUPLICATE") {
+    return {
+      ok: true,
+      skipped: true,
+      duplicate: true,
+      message: "This exact accepted submission was already synced."
+    };
+  }
+
+  if (engineResult.status === "FAILED") {
+    return {
+      ok: false,
+      error: engineResult.error || "Unknown sync error"
+    };
+  }
+
+  const newCommitUrl = `https://github.com/${settings.githubOwner}/${settings.githubRepo}/commit/${engineResult.commitSha}`;
 
   const now =
     new Date().toISOString();
@@ -540,9 +584,7 @@ async function syncSubmission(
       now,
 
     commitUrl:
-      solutionResult.commitUrl ||
-      readmeResult.commitUrl ||
-      ""
+      newCommitUrl
   };
 
   records.unshift(record);
@@ -573,7 +615,7 @@ async function syncSubmission(
     skipped: false,
 
     createdOrUpdated:
-      solutionResult.createdOrUpdated,
+      "created",
 
     path:
       solutionPath,
@@ -586,12 +628,6 @@ async function syncSubmission(
 function validateGithubSettings(
   settings
 ) {
-  if (!settings.githubToken) {
-    throw new Error(
-      "GitHub token is missing. Open Settings."
-    );
-  }
-
   if (!settings.githubOwner) {
     throw new Error(
       "GitHub owner is missing."
@@ -609,29 +645,6 @@ function validateGithubSettings(
       "GitHub branch is missing."
     );
   }
-}
-
-async function githubFetch(
-  url,
-  token,
-  options = {}
-) {
-  return fetch(url, {
-    ...options,
-
-    headers: {
-      Accept:
-        "application/vnd.github+json",
-
-      Authorization:
-        `Bearer ${token}`,
-
-      "X-GitHub-Api-Version":
-        "2026-03-10",
-
-      ...(options.headers || {})
-    }
-  });
 }
 
 async function githubError(
@@ -655,133 +668,7 @@ async function githubError(
   return `${prefix} HTTP ${response.status}.${detail}`;
 }
 
-async function upsertGithubFile(
-  settings,
-  path,
-  content,
-  message
-) {
-  const owner =
-    encodeURIComponent(
-      settings.githubOwner
-    );
 
-  const repo =
-    encodeURIComponent(
-      settings.githubRepo
-    );
-
-  const safePath =
-    path
-      .split("/")
-      .map(
-        (part) =>
-          encodeURIComponent(part)
-      )
-      .join("/");
-
-  const url =
-    `https://api.github.com/repos/${owner}/${repo}/contents/${safePath}`;
-
-  let existingSha = null;
-
-  const getRes =
-    await githubFetch(
-      `${url}?ref=${encodeURIComponent(
-        settings.githubBranch
-      )}`,
-      settings.githubToken
-    );
-
-  if (getRes.ok) {
-    const data =
-      await getRes.json();
-
-    existingSha =
-      data.sha || null;
-  } else if (
-    getRes.status !== 404 &&
-    getRes.status !== 409
-  ) {
-    throw new Error(
-      await githubError(
-        getRes,
-        `Could not inspect ${path}.`
-      )
-    );
-  }
-
-  const bytes =
-    new TextEncoder().encode(
-      content
-    );
-
-  const binary =
-    Array.from(
-      bytes,
-      (byte) =>
-        String.fromCharCode(byte)
-    ).join("");
-
-  const base64 =
-    btoa(binary);
-
-  const payload = {
-    message,
-    content: base64,
-    branch:
-      settings.githubBranch
-  };
-
-  if (existingSha) {
-    payload.sha =
-      existingSha;
-  }
-
-  const putRes =
-    await githubFetch(
-      url,
-      settings.githubToken,
-      {
-        method: "PUT",
-
-        headers: {
-          "Content-Type":
-            "application/json"
-        },
-
-        body:
-          JSON.stringify(payload)
-      }
-    );
-
-  if (!putRes.ok) {
-    throw new Error(
-      await githubError(
-        putRes,
-        `GitHub could ${
-          existingSha
-            ? "not update"
-            : "not create"
-        } ${path}.`
-      )
-    );
-  }
-
-  const result =
-    await putRes.json();
-
-  return {
-    createdOrUpdated:
-      existingSha
-        ? "updated"
-        : "created",
-
-    commitUrl:
-      result?.commit?.html_url ||
-      ""
-  };
-}
 
 function buildSolutionPath(
   submission,
