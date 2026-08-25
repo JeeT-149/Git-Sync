@@ -3,6 +3,7 @@
  * plus the final markdown with placeholders resolved to relative paths.
  */
 export async function resolveProblemImages(markdown, imageUrls, assetsFolderPath) {
+  console.log("[GitSync DEBUG] resolveProblemImages called with:", imageUrls);
   const files = [];
   let resolvedMarkdown = markdown;
 

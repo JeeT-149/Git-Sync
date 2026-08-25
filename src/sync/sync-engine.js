@@ -6,6 +6,7 @@ import {
   createCommit,
   updateRef
 } from "../github/github-api.js";
+import { notifySyncResult } from "../notifications/notify.js";
 
 const DEDUPE_TTL_MS = 8000;
 const branchLocks = new Map();
@@ -34,6 +35,61 @@ function withBranchLock(lockKey, fn) {
   const run = previous.then(fn, fn);
   branchLocks.set(lockKey, run.catch(() => {}));
   return run;
+}
+
+async function recordSyncHistory(submission, result) {
+  const { records = [] } = await chrome.storage.local.get("records");
+  const key = submission.problemSlug;
+  const filtered = records.filter(r => r.problemSlug !== key);
+
+  const entry = {
+    problemSlug: submission.problemSlug,
+    problemTitle: submission.problemTitle,
+    difficulty: submission.difficulty,
+    language: submission.language,
+    platform: submission.platform || "LeetCode",
+    status: result.status,
+    syncedAt: Date.now()
+  };
+
+  if (result.status === "SYNCED") {
+    entry.commitSha = result.commitSha;
+  } else if (result.status === "FAILED") {
+    entry.error = result.error;
+    entry.retryPayload = {
+      owner: submission.owner,
+      repo: submission.repo,
+      branch: submission.branch,
+      solutionPath: submission.solutionPath,
+      solutionContent: submission.solutionContent,
+      readmePath: submission.readmePath,
+      readmeContent: submission.readmeContent,
+      imageFiles: submission.imageFiles,
+      commitMessage: submission.commitMessage,
+      submissionId: submission.submissionId
+    };
+  }
+
+  filtered.push(entry);
+
+  const storageUpdate = { records: filtered };
+  if (result.status === "SYNCED") {
+    storageUpdate.lastSync = {
+      ok: true,
+      at: entry.syncedAt,
+      title: entry.problemTitle,
+      commitUrl: `https://github.com/${submission.owner}/${submission.repo}/commit/${result.commitSha}`
+    };
+  } else if (result.status === "FAILED") {
+    storageUpdate.lastSync = {
+      ok: false,
+      at: entry.syncedAt,
+      title: entry.problemTitle,
+      error: result.error
+    };
+  }
+
+  await chrome.storage.local.set(storageUpdate);
 }
 
 /**
@@ -78,7 +134,7 @@ export async function syncSubmission(submission) {
     encoding: "base64"
   }));
 
-  return withBranchLock(lockKey, () =>
+  const result = await withBranchLock(lockKey, () =>
     commitFilesAtomic({
       owner,
       repo,
@@ -87,6 +143,16 @@ export async function syncSubmission(submission) {
       message: commitMessage
     })
   );
+
+  await recordSyncHistory(submission, result);
+
+  notifySyncResult({
+    status: result.status,
+    problemTitle: submission.problemTitle,
+    problemSlug: submission.problemSlug
+  });
+
+  return result;
 }
 
 async function commitFilesAtomic({ owner, repo, branch, files, message }) {
@@ -130,4 +196,24 @@ async function commitFilesAtomic({ owner, repo, branch, files, message }) {
   }
 
   return { status: "FAILED", error: lastError?.message || "Unknown sync error" };
+}
+
+export async function retrySync(problemSlug) {
+  const { records = [] } = await chrome.storage.local.get("records");
+  const record = records.find(r => r.problemSlug === problemSlug);
+
+  if (!record || record.status !== "FAILED" || !record.retryPayload) {
+    return { ok: false, error: "No retryable failure found for this problem." };
+  }
+
+  const result = await syncSubmission({
+    ...record.retryPayload,
+    problemSlug: record.problemSlug,
+    problemTitle: record.problemTitle,
+    difficulty: record.difficulty,
+    language: record.language,
+    platform: record.platform
+  });
+
+  return { ok: true, result };
 }

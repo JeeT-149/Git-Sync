@@ -2,19 +2,17 @@
   "manifest_version": 3,
   "name": "GitSync",
   "version": "1.0.0",
-  "description": "Automatically sync LeetCode and GeeksforGeeks solutions to GitHub.",
+  "description": "Automatically sync your accepted LeetCode solutions to GitHub.",
   "permissions": [
     "storage",
-    "tabs",
     "identity",
-    "alarms"
+    "alarms",
+    "notifications"
   ],
   "host_permissions": [
     "https://leetcode.com/*",
     "https://*.leetcode.com/*",
     "https://assets.leetcode.com/*",
-    "https://www.geeksforgeeks.org/*",
-    "https://geeksforgeeks.org/*",
     "https://api.github.com/*",
     "https://git-sync-auth-broker.vercel.app/*"
   ],
@@ -31,38 +29,20 @@
     {
       "matches": [
         "https://leetcode.com/*",
-        "https://*.leetcode.com/*",
-        "https://www.geeksforgeeks.org/*",
-        "https://geeksforgeeks.org/*"
+        "https://*.leetcode.com/*"
       ],
-      "js": [
-        "src/content/content.js"
-      ],
+      "js": ["src/content/content.js"],
       "run_at": "document_idle",
       "world": "ISOLATED"
     },
     {
       "matches": [
         "https://leetcode.com/*",
-        "https://*.leetcode.com/*",
-        "https://www.geeksforgeeks.org/*",
-        "https://geeksforgeeks.org/*"
+        "https://*.leetcode.com/*"
       ],
-      "js": [
-        "src/content/page-bridge.js"
-      ],
+      "js": ["src/content/page-bridge.js"],
       "run_at": "document_start",
       "world": "MAIN"
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "src/*"
-      ],
-      "matches": [
-        "<all_urls>"
-      ]
     }
   ]
 }

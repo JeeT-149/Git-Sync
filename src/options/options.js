@@ -6,8 +6,7 @@ const defaults = {
   includeProblemStatement: true,
   includeRuntime: true,
   includeMemory: true,
-  leetcodeEnabled: true,
-  gfgEnabled: true
+  leetcodeEnabled: true
 };
 
 const ids = Object.keys(defaults);

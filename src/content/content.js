@@ -64,8 +64,8 @@
         const s = settings || {};
         const root = s.rootFolder ? `${s.rootFolder}/` : "";
         const diff = sanitizePathPart(data.difficulty || "Unknown");
-        const title = sanitizePathPart(data.problemTitle || data.problemSlug || "Problem");
-        const problemFolderPath = [root, "LeetCode", diff, title].filter(Boolean).join("/");
+        const folderName = sanitizePathPart(data.problemSlug || "Problem");
+        const problemFolderPath = [root, "LeetCode", diff, folderName].filter(Boolean).join("/");
         const solutionFileName = `solution${extensionFor(data.language)}`;
 
         const { prepareSubmissionDocs } = await import(chrome.runtime.getURL("src/sync/prepare-submission.js"));
@@ -74,8 +74,11 @@
         data.problemFolderPath = problemFolderPath;
         data.solutionFileName = solutionFileName;
         
-        const { readmeContent, imageFiles } = await prepareSubmissionDocs(data);
+        const { readmeContent, imageFiles, canonicalTitle } = await prepareSubmissionDocs(data);
         
+        if (canonicalTitle) {
+          data.problemTitle = canonicalTitle;
+        }
         data.readmeContent = readmeContent;
         data.imageFiles = imageFiles;
       } catch (err) {

@@ -103,38 +103,79 @@ async function load() {
   const dashboard = await send("GET_DASHBOARD");
   if (!dashboard.ok) return;
 
-  setText("total", dashboard.total);
-  setText("streak", `${dashboard.streak} 🔥`);
-  setText("easy", dashboard.counts.Easy || 0);
-  setText("medium", dashboard.counts.Medium || 0);
-  setText("hard", dashboard.counts.Hard || 0);
-  setText("gfg", dashboard.platforms.gfg || 0);
+  setText("total", dashboard.totalSolved || 0);
+  setText("streak", `${dashboard.streak?.current || 0} 🔥`);
+  setText("easy", dashboard.byDifficulty?.Easy || 0);
+  setText("medium", dashboard.byDifficulty?.Medium || 0);
+  setText("hard", dashboard.byDifficulty?.Hard || 0);
 
-  setText("blind75Label", `${dashboard.blind75.completed}/${dashboard.blind75.total}`);
-  setText("blind150Label", `${dashboard.blind150.completed}/${dashboard.blind150.total}`);
-  document.getElementById("blind75Bar").style.width =
-    `${dashboard.blind75.total ? (dashboard.blind75.completed / dashboard.blind75.total) * 100 : 0}%`;
 
-  setText("syncStatus", dashboard.lastSync?.ok ? "✓ Connected" : "—");
+  const syncStatusEl = document.getElementById("syncStatus");
+  if (dashboard.failedCount > 0) {
+    syncStatusEl.textContent = `⚠ ${dashboard.failedCount} sync failed`;
+    syncStatusEl.style.color = "#fbbf24";
+  } else if (dashboard.totalRecords > 0) {
+    syncStatusEl.textContent = "✓ All synced";
+    syncStatusEl.style.color = "#34d399";
+  } else {
+    syncStatusEl.textContent = "";
+  }
 
   const recent = document.getElementById("recent");
   recent.innerHTML = "";
-  if (!dashboard.recent.length) {
-    recent.innerHTML = `<div class="meta">No syncs yet. Submit an accepted problem.</div>`;
+  if (!dashboard.recentActivity || !dashboard.recentActivity.length) {
+    recent.innerHTML = `<div class="meta" style="padding: 12px; text-align: center;">No syncs yet — solve a problem and hit Submit to get started</div>`;
     return;
   }
 
-  for (const r of dashboard.recent) {
+  for (const r of dashboard.recentActivity) {
     const row = document.createElement("div");
     row.className = "row";
+    
+    const badgeHtml = r.status === "FAILED" 
+      ? `<div class="badge" style="background:#451a1e; color:#ff8ea8; margin-right: 8px;">FAILED</div>
+         <button class="retry-btn" data-slug="${escapeHtml(r.problemSlug)}" style="padding: 4px 8px; font-size: 11px; border-radius: 4px; background: #3f3f46; color: white; border: none; cursor: pointer;">Retry</button>`
+      : `<div class="badge">SYNCED</div>`;
+
     row.innerHTML = `
       <div>
         <div class="name">${escapeHtml(r.problemTitle || r.problemSlug)}</div>
         <div class="meta">${escapeHtml(r.platform)} · ${escapeHtml(r.language)} · ${escapeHtml(r.difficulty)}</div>
       </div>
-      <div class="badge">SYNCED</div>
+      <div style="display:flex; align-items:center;">
+        ${badgeHtml}
+      </div>
     `;
     recent.appendChild(row);
+  }
+
+  // Attach retry handlers
+  const retryBtns = recent.querySelectorAll('.retry-btn');
+  retryBtns.forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const btnEl = e.target;
+      const problemSlug = btnEl.getAttribute('data-slug');
+      btnEl.disabled = true;
+      btnEl.textContent = "Retrying...";
+      await handleRetryClick(problemSlug, btnEl);
+    });
+  });
+}
+
+async function handleRetryClick(problemSlug, btnEl) {
+  try {
+    const response = await send("RETRY_SYNC", { problemSlug });
+    if (response?.ok) {
+      await load(); // re-fetch GET_DASHBOARD and re-render
+    } else {
+      btnEl.disabled = false;
+      btnEl.textContent = "Failed";
+      btnEl.style.background = "#451a1e";
+      btnEl.style.color = "#ff8ea8";
+    }
+  } catch (err) {
+    btnEl.disabled = false;
+    btnEl.textContent = "Error";
   }
 }
 

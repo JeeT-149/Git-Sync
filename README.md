@@ -1,46 +1,34 @@
 # GitSync
 
-A Manifest V3 Chrome extension that syncs accepted LeetCode and GeeksforGeeks solutions directly to GitHub without a backend.
+Automatically sync your accepted LeetCode solutions to GitHub — no copy-paste, no manual commits.
 
-## Features
+## How it works
 
-- Automatic accepted-submission detection
-- LeetCode + GeeksforGeeks adapters
-- GitHub fine-grained PAT support
-- Create-or-update semantics: the newest accepted code replaces the old solution file
-- Automatic README per problem
-- Easy / Medium / Hard statistics
-- Daily streak
-- Blind 75 / Blind 150 progress
-- Topic and interview-pattern heuristics
-- Local sync history and failed-sync diagnostics
-- No backend, analytics, or third-party server
+1. Install the extension and connect your GitHub account (secure OAuth, no personal access token needed).
+2. Pick a target repository and branch.
+3. Solve problems on LeetCode as normal.
+4. Hit **Submit** — GitSync captures your code and pushes it straight to GitHub, along with an auto-generated README containing the problem statement, topics, and (where available) runtime/memory stats.
 
-## Important
+Every sync produces a single clean commit: your solution file + a documented README, atomically.
 
-This is intentionally a DOM/editor integration extension. LeetCode and GeeksforGeeks can change their UI without notice, so the site adapters may need selector adjustments over time.
+## Setup (for contributors / local development)
 
-## Recommended GitHub token
+1. Clone this repo.
+2. Go to `chrome://extensions`, enable **Developer mode**.
+3. Click **Load unpacked** and select this repo's root folder.
+4. Refresh any open LeetCode tab before testing.
 
-Create a fine-grained personal access token limited to your target repository with:
+## Architecture
 
-- Repository access: only the repository used by this extension
-- Repository permissions: Contents -> Read and write
+- **Extension** (this repo) — Chrome MV3 extension, handles LeetCode detection, code capture, and GitHub API sync.
+- **Auth Broker** ([git-sync-auth-broker](https://github.com/JeeT-149/git-sync-auth-broker)) — a minimal, stateless Vercel serverless function that performs the OAuth token exchange. It never stores tokens, solution code, or user data.
 
-The extension only talks to `api.github.com`.
+See `docs/` for detailed architecture, authentication flow, and sync-engine documentation.
 
-## Development
+## Privacy
 
-1. Open `chrome://extensions`
-2. Turn on Developer mode
-3. Click Load unpacked
-4. Select this folder
-5. Open the extension settings and configure GitHub
-6. Open a LeetCode or GFG problem
-7. Submit a correct solution
-8. Check the GitHub repository
+GitSync only requests the GitHub permissions needed to read/write to the repository you select. No analytics, no tracking, no third-party data collection. See [PRIVACY.md](./PRIVACY.md) for details.
 
-For debugging:
-- `chrome://extensions` -> extension -> Service worker -> Inspect
-- Open the page DevTools console on LeetCode/GFG
-- The extension logs with `GitSync`
+## License
+
+MIT — see [LICENSE](./LICENSE).

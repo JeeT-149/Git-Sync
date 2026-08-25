@@ -31,8 +31,18 @@ export function convertProblemHtmlToMarkdown(html) {
         return `*${children}*`;
       case "code":
         return `\`${children}\``;
-      case "pre":
+      case "pre": {
+        const hasImage = node.querySelector("img");
+
+        if (hasImage) {
+          // LeetCode's "Example" blocks bundle Input/Output/Explanation text
+          // with a diagram image inside one <pre>. Treat as rich content,
+          // not code — fencing it would print the image markdown as literal text.
+          return `${children.trim()}\n\n`;
+        }
+
         return `\`\`\`\n${children.trim()}\n\`\`\`\n\n`;
+      }
       case "sup":
         return `^${children}`;
       case "br":
@@ -65,7 +75,9 @@ export function convertProblemHtmlToMarkdown(html) {
 
   function convertTable(tableNode) {
     const rows = Array.from(tableNode.querySelectorAll("tr")).map((tr) =>
-      Array.from(tr.children).map((cell) => cell.textContent.trim())
+      Array.from(tr.children).map((cell) =>
+        Array.from(cell.childNodes).map(walk).join("").trim()
+      )
     );
 
     if (rows.length === 0) return "";

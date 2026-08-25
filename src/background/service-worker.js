@@ -11,7 +11,10 @@ import {
   clearAuthentication,
   hasValidAuthentication
 } from "../auth/token-manager.js";
-import { syncSubmission as engineSyncSubmission } from "../sync/sync-engine.js";
+import { syncSubmission as engineSyncSubmission, retrySync } from "../sync/sync-engine.js";
+import { getDashboard } from "../dashboard/dashboard.js";
+
+import { resolveProblemImages } from "../docs/image-assets.js";
 
 const DEFAULTS = {
   settings: {
@@ -25,8 +28,7 @@ const DEFAULTS = {
     includeMemory: true,
     rootFolder: "",
     commitPrefix: "GitSync",
-    leetcodeEnabled: true,
-    gfgEnabled: true
+    leetcodeEnabled: true
   },
   records: [],
   lastSync: null
@@ -103,6 +105,11 @@ chrome.runtime.onMessage.addListener(
   }
 );
 
+chrome.notifications?.onClicked.addListener((notificationId) => {
+  chrome.action.openPopup?.().catch(() => {});
+  chrome.notifications.clear(notificationId);
+});
+
 async function handleMessage(
   message,
   sender
@@ -169,6 +176,9 @@ async function handleMessage(
         message.submission
       );
 
+    case "RETRY_SYNC":
+      return retrySync(message.problemSlug);
+
     case "GET_DASHBOARD":
       return getDashboard();
 
@@ -181,6 +191,18 @@ async function handleMessage(
       return {
         ok: true
       };
+
+    case "RESOLVE_PROBLEM_IMAGES":
+      try {
+        const result = await resolveProblemImages(
+          message.markdown,
+          message.imageUrls,
+          message.assetsFolderPath
+        );
+        return { ok: true, result };
+      } catch (err) {
+        return { ok: false, error: err.message };
+      }
 
     default:
       return {
@@ -429,18 +451,6 @@ async function syncSubmission(
     };
   }
 
-  if (
-    submission.platform ===
-      "gfg" &&
-    !settings.gfgEnabled
-  ) {
-    return {
-      ok: true,
-      skipped: true,
-      message:
-        "GeeksforGeeks sync is disabled."
-    };
-  }
 
   const recordsData =
     await chrome.storage.local.get({
@@ -496,13 +506,10 @@ async function syncSubmission(
     );
 
   const engineResult = await engineSyncSubmission({
+    ...submission,
     owner: settings.githubOwner,
     repo: settings.githubRepo,
     branch: settings.githubBranch,
-    problemSlug: submission.problemSlug,
-    language: submission.language,
-    code: submission.code,
-    submissionId: submission.submissionId,
     solutionPath,
     solutionContent: submission.code,
     readmePath,
@@ -529,87 +536,6 @@ async function syncSubmission(
 
   const newCommitUrl = `https://github.com/${settings.githubOwner}/${settings.githubRepo}/commit/${engineResult.commitSha}`;
 
-  const now =
-    new Date().toISOString();
-
-  const record = {
-    id: crypto.randomUUID(),
-
-    platform:
-      submission.platform,
-
-    problemSlug:
-      submission.problemSlug,
-
-    problemTitle:
-      submission.problemTitle,
-
-    difficulty:
-      submission.difficulty ||
-      "Unknown",
-
-    language:
-      submission.language ||
-      "Unknown",
-
-    codeHash:
-      submission.codeHash,
-
-    path:
-      solutionPath,
-
-    url:
-      submission.url,
-
-    status:
-      submission.status,
-
-    topics:
-      submission.topics || [],
-
-    patterns:
-      submission.patterns || [],
-
-    runtime:
-      submission.runtime || "",
-
-    memory:
-      submission.memory || "",
-
-    submittedAt:
-      submission.submittedAt ||
-      now,
-
-    syncedAt:
-      now,
-
-    commitUrl:
-      newCommitUrl
-  };
-
-  records.unshift(record);
-
-  const bounded =
-    records.slice(0, 1000);
-
-  await chrome.storage.local.set({
-    records: bounded,
-
-    lastSync: {
-      ok: true,
-      at: now,
-
-      title:
-        submission.problemTitle,
-
-      path:
-        solutionPath,
-
-      commitUrl:
-        record.commitUrl
-    }
-  });
-
   return {
     ok: true,
     skipped: false,
@@ -621,7 +547,7 @@ async function syncSubmission(
       solutionPath,
 
     commitUrl:
-      record.commitUrl
+      newCommitUrl
   };
 }
 
@@ -692,8 +618,8 @@ function buildSolutionPath(
 
   const title =
     sanitizePathPart(
-      submission.problemTitle ||
-        submission.problemSlug ||
+      submission.problemSlug ||
+        submission.problemTitle ||
         "Problem"
     );
 
@@ -865,235 +791,4 @@ function buildReadme(
     lines.join("\n") +
     "\n"
   );
-}
-
-async function getDashboard() {
-  const data =
-    await chrome.storage.local.get({
-      records: [],
-      lastSync: null
-    });
-
-  const records =
-    Array.isArray(
-      data.records
-    )
-      ? data.records
-      : [];
-
-  const counts = {
-    Easy: 0,
-    Medium: 0,
-    Hard: 0,
-    Unknown: 0
-  };
-
-  const languages = {};
-
-  const platforms = {
-    leetcode: 0,
-    gfg: 0
-  };
-
-  const latestByProblem =
-    new Map();
-
-  for (const record of records) {
-    const key =
-      `${record.platform}:${record.problemSlug}`;
-
-    if (
-      !latestByProblem.has(key)
-    ) {
-      latestByProblem.set(
-        key,
-        record
-      );
-    }
-  }
-
-  for (
-    const record
-    of latestByProblem.values()
-  ) {
-    counts[record.difficulty] =
-      (counts[record.difficulty] ||
-        0) + 1;
-
-    languages[record.language] =
-      (languages[record.language] ||
-        0) + 1;
-
-    if (
-      record.platform ===
-      "leetcode"
-    ) {
-      platforms.leetcode++;
-    }
-
-    if (
-      record.platform ===
-      "gfg"
-    ) {
-      platforms.gfg++;
-    }
-  }
-
-  const dates = [
-    ...new Set(
-      records.map(
-        (record) =>
-          new Date(
-            record.syncedAt ||
-              record.submittedAt
-          )
-            .toISOString()
-            .slice(0, 10)
-      )
-    )
-  ].sort().reverse();
-
-  let streak = 0;
-
-  const cursor =
-    new Date();
-
-  cursor.setHours(
-    0,
-    0,
-    0,
-    0
-  );
-
-  for (const date of dates) {
-    const currentDate =
-      cursor
-        .toISOString()
-        .slice(0, 10);
-
-    if (
-      date === currentDate
-    ) {
-      streak++;
-
-      cursor.setDate(
-        cursor.getDate() - 1
-      );
-    } else if (
-      date < currentDate
-    ) {
-      break;
-    }
-  }
-
-  const solvedKeys =
-    new Set(
-      latestByProblem.keys()
-    );
-
-  const blindData =
-    await loadBlindLists(
-      solvedKeys
-    );
-
-  return {
-    ok: true,
-
-    total:
-      solvedKeys.size,
-
-    counts,
-
-    languages,
-
-    platforms,
-
-    streak,
-
-    recent:
-      records.slice(0, 12),
-
-    lastSync:
-      data.lastSync,
-
-    blind75:
-      blindData.blind75,
-
-    blind150:
-      blindData.blind150
-  };
-}
-
-async function loadBlindLists(
-  solvedKeys
-) {
-  const url =
-    chrome.runtime.getURL(
-      "src/data/blind-lists.json"
-    );
-
-  const res =
-    await fetch(url);
-
-  const data =
-    await res.json();
-
-  const normalize =
-    (value) =>
-      String(value)
-        .toLowerCase()
-        .replace(
-          /[^a-z0-9]+/g,
-          " "
-        )
-        .trim();
-
-  function progress(
-    list
-  ) {
-    const solvedTitles =
-      new Set(
-        [...solvedKeys].map(
-          (key) =>
-            normalize(
-              key
-                .split(":")
-                .slice(1)
-                .join(":")
-            )
-        )
-      );
-
-    const completed =
-      list.filter(
-        (item) =>
-          solvedTitles.has(
-            normalize(item)
-          )
-      );
-
-    return {
-      total:
-        list.length,
-
-      completed:
-        completed.length,
-
-      remaining:
-        list.length -
-        completed.length
-    };
-  }
-
-  return {
-    blind75:
-      progress(
-        data.blind75 || []
-      ),
-
-    blind150:
-      progress(
-        data.blind150 || []
-      )
-  };
 }
