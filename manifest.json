@@ -1,6 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GitSync",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0LlxgMTeS3fJP+q/PxrxX8pIaf01TP3v+Miqb7iAtH8raCe0N3L7ctLYnivZpIZaIbKbY7mWmKq+cCRs5QN0J4SW+CpEPm40uCR0rVUTjZo4V/y7DqoThEQ30AO8bjjOgws2EFN3FyEOT0XGTHx/jEN7SCoBtlFMaHsfYEWnxq1BBJHeZf/Bek/MuWYLVs98YjgkuUS8n6FGTSS9Sf97HseHYKhhHDdAPd1+KFiwFxdB3vhV5IkXY5cMMB2LX+2PzGV82G1Arx2njI5W1FbgAfJGTgA4sCMM04gNN7IGCOg9WY+PXTv8bnbotURqjz1P4nxMzXJthVncoxQuSl4ElwIDAQAB",
   "version": "1.0.0",
   "description": "Automatically sync your accepted LeetCode solutions to GitHub.",
   "permissions": [

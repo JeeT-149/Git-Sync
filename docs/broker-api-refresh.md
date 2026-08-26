@@ -16,7 +16,7 @@ export const config = {
 export default async function handler(req, res) {
   // CORS Preflight
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', 'chrome-extension://pbpfkfeebchclpgapalenfnlmhpmijeg');
+    res.setHeader('Access-Control-Allow-Origin', 'chrome-extension://cphepalcajldmiodfbljmedocihhgdne');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     return res.status(200).end();
@@ -34,7 +34,7 @@ export default async function handler(req, res) {
 
   // Origin verification
   const origin = req.headers.origin;
-  if (origin !== 'chrome-extension://pbpfkfeebchclpgapalenfnlmhpmijeg') {
+  if (origin !== 'chrome-extension://cphepalcajldmiodfbljmedocihhgdne') {
     return res.status(403).json({ error: 'Forbidden Origin' });
   }
 
@@ -79,7 +79,7 @@ export default async function handler(req, res) {
     }
 
     // Return only non-sensitive elements required by the extension
-    res.setHeader('Access-Control-Allow-Origin', 'chrome-extension://pbpfkfeebchclpgapalenfnlmhpmijeg');
+    res.setHeader('Access-Control-Allow-Origin', 'chrome-extension://cphepalcajldmiodfbljmedocihhgdne');
     return res.status(200).json({
       access_token: data.access_token,
       expires_in: data.expires_in,
