@@ -13,10 +13,14 @@ Every sync produces a single clean commit: your solution file + a documented REA
 
 ## Setup (for contributors / local development)
 
-1. Clone this repo.
-2. Go to `chrome://extensions`, enable **Developer mode**.
-3. Click **Load unpacked** and select this repo's root folder.
-4. Refresh any open LeetCode tab before testing.
+1. Download/clone the repo
+2. Go to chrome://extensions in Chrome
+3. Toggle on "Developer mode" (top-right switch)
+4. Click "Load unpacked"
+5. Select the folder containing manifest.json
+6. The GitSync icon should appear in your extensions bar
+7. Click it, connect your GitHub account, pick a repo + branch, and you're set
+8. Go solve a LeetCode problem and hit Submit — it should sync automatically
 
 ## Architecture
 
