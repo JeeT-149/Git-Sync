@@ -119,6 +119,9 @@ export async function startGitHubLogin() {
       redirect_uri:
         redirectUri,
 
+      response_type:
+        "code",
+
       state,
 
       code_challenge:
