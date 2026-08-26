@@ -18,10 +18,13 @@ async function resolveProblemImagesViaBackground(markdown, imageUrls, assetsFold
   return response.result; // { markdown, files }
 }
 
-export async function prepareSubmissionDocs(submission) {
+export async function getTrueMetadata(titleSlug) {
+  return await fetchProblemMetadata(titleSlug);
+}
+
+export async function prepareSubmissionDocs(submission, meta) {
   const { titleSlug, problemFolderPath } = submission;
 
-  const meta = await fetchProblemMetadata(titleSlug);
   console.log("[GitSync DEBUG] raw contentHtml:", meta.contentHtml);
   console.log("[GitSync DEBUG] topics:", meta.topics);
 

@@ -13,6 +13,11 @@ Every sync produces a single clean commit: your solution file + a documented REA
 
 ## Setup (for contributors / local development)
 
+### 1. GitHub App Installation
+GitSync uses a GitHub App for secure authentication. 
+To install it on your current account, go to https://github.com/apps/git-sync-pro while logged into your GitHub account.
+
+### 2. Extension Installation
 1. Download/clone the repo
 2. Go to chrome://extensions in Chrome
 3. Toggle on "Developer mode" (top-right switch)
@@ -21,6 +26,9 @@ Every sync produces a single clean commit: your solution file + a documented REA
 6. The GitSync icon should appear in your extensions bar
 7. Click it, connect your GitHub account, pick a repo + branch, and you're set
 8. Go solve a LeetCode problem and hit Submit — it should sync automatically
+
+> [!NOTE]
+> **New Repositories:** If you create a brand-new repository on GitHub for GitSync, you cannot push code until the repository has at least one branch. Please check the "Add a README file" box when creating the repo so the initial `main` branch is created!
 
 ## Architecture
 

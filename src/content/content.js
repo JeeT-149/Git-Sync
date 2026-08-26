@@ -62,19 +62,24 @@
       try {
         const { settings } = await chrome.storage.local.get("settings");
         const s = settings || {};
+        const { prepareSubmissionDocs, getTrueMetadata } = await import(chrome.runtime.getURL("src/sync/prepare-submission.js"));
+        
+        const meta = await getTrueMetadata(data.problemSlug);
+        if (meta && meta.difficulty) {
+          data.difficulty = meta.difficulty;
+        }
+
         const root = s.rootFolder ? `${s.rootFolder}/` : "";
         const diff = sanitizePathPart(data.difficulty || "Unknown");
         const folderName = sanitizePathPart(data.problemSlug || "Problem");
         const problemFolderPath = [root, "LeetCode", diff, folderName].filter(Boolean).join("/");
         const solutionFileName = `solution${extensionFor(data.language)}`;
 
-        const { prepareSubmissionDocs } = await import(chrome.runtime.getURL("src/sync/prepare-submission.js"));
-        
         data.titleSlug = data.problemSlug;
         data.problemFolderPath = problemFolderPath;
         data.solutionFileName = solutionFileName;
         
-        const { readmeContent, imageFiles, canonicalTitle } = await prepareSubmissionDocs(data);
+        const { readmeContent, imageFiles, canonicalTitle } = await prepareSubmissionDocs(data, meta);
         
         if (canonicalTitle) {
           data.problemTitle = canonicalTitle;
