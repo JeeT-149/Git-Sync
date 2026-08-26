@@ -44,5 +44,17 @@
       "run_at": "document_start",
       "world": "MAIN"
     }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/sync/*",
+        "src/docs/*",
+        "src/platforms/*"
+      ],
+      "matches": [
+        "https://leetcode.com/*"
+      ]
+    }
   ]
 }
